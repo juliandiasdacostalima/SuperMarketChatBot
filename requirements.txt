@@ -1,2 +1,8 @@
 streamlit
 hugchat==0.0.8
+streamlit
+python-dotenv
+langchain
+openai
+pinecone-client
+bs4
