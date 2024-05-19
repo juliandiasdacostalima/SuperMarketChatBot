@@ -6,7 +6,7 @@ langchain
 openai
 pinecone-client
 bs4
-langchai
+langchain
 langchain-community
 langchain_pinecone
 langchain_openai
