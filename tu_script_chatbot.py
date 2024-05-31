@@ -1,38 +1,16 @@
 #!/usr/bin/env python
-# coding: utf-8
-
-# In[3]:
-
 
 import os
+import bs4
 from dotenv import load_dotenv, find_dotenv
-from langchain.chains import ConversationalRetrievalChain
 from langchain.chat_models import ChatOpenAI
 from langchain.memory import ConversationBufferMemory
 from pinecone import Pinecone,ServerlessSpec
 from langchain_pinecone import PineconeVectorStore
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain_openai import OpenAIEmbeddings
-
-
-# In[4]:
-
-
-load_dotenv(find_dotenv(), override=True)
-
-
-# In[5]:
-
-
-os.environ["PINECONE_API_KEY"] = "9aa9eec2-6465-43d6-a740-529299b29f77"
-
-
-# In[8]:
-
-
-import bs4
 from langchain import hub
-from langchain.chains import create_history_aware_retriever, create_retrieval_chain
+from langchain.chains import ConversationalRetrievalChain,create_history_aware_retriever, create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 #from langchain_chroma import Chroma
 from langchain_community.chat_message_histories import ChatMessageHistory
@@ -45,37 +23,39 @@ from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 import os
+
 from langchain.retrievers import (
     ContextualCompressionRetriever,
     MergerRetriever,
+    PineconeHybridSearchRetriever
 )
 from langchain_community.document_transformers import (
     EmbeddingsClusteringFilter,
     EmbeddingsRedundantFilter,
 )
 from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_openai import OpenAIEmbeddings
-from langchain_community.retrievers import (
-    PineconeHybridSearchRetriever,
-)
-from prettytable import PrettyTable
+
+
+load_dotenv(find_dotenv(), override=True
+
+# Obtener las variables de entorno
+PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # Inicializaciones necesarias
-llm = ChatOpenAI(model='gpt-4o', api_key="sk-proj-PTpCD6bZUIFQ1QSGTJ39T3BlbkFJdxUmGAOYbg36BU18YcxC")
-embeddings = OpenAIEmbeddings(api_key="sk-proj-PTpCD6bZUIFQ1QSGTJ39T3BlbkFJdxUmGAOYbg36BU18YcxC", model='text-embedding-ada-002')
+llm = ChatOpenAI(model='gpt-4o', api_key=OPENAI_API_KEY)
+embeddings = OpenAIEmbeddings(api_key=OPENAI_API_KEY, model='text-embedding-ada-002')
 store = {}
 
 def modelo_final(pregunta):
-    
-    
-    vectores_dia = PineconeVectorStore.from_existing_index('dia', embeddings)
+    vectores_dia = PineconeVectorStore.from_existing_index('dia', embeddings, api_key=PINECONE_API_KEY)
     retriever_dia = vectores_dia.as_retriever(search_type='similarity', search_kwargs={'k': 10})
-    
-    vectores_mercadona = PineconeVectorStore.from_existing_index('superdown', embeddings)
+
+    vectores_mercadona = PineconeVectorStore.from_existing_index('superdown', embeddings, api_key=PINECONE_API_KEY)
     retriever_mercadona = vectores_mercadona.as_retriever(search_type='similarity', search_kwargs={'k': 10})
-    
-    retriever= MergerRetriever(retrievers=[retriever_dia, retriever_mercadona])
-    
+
+    retriever = MergerRetriever(retrievers=[retriever_dia, retriever_mercadona])
+
     ### Contextualize question ###
     contextualize_q_system_prompt = """Considera la última pregunta del usuario y reformúlala para que pueda entenderse independientemente de cualquier contexto previo en el historial de chat. No respondas la pregunta; simplemente asegúrate de que esté bien formulada y clara."""
     contextualize_q_prompt = ChatPromptTemplate.from_messages(
@@ -89,7 +69,6 @@ def modelo_final(pregunta):
         llm, retriever, contextualize_q_prompt
     )
 
-    ### Answer question ###
     ### Answer question ###
     qa_system_prompt = """Analiza y compara la información obtenida de los supermercados Mercadona y DIA. Proporciona tus hallazgos en dos tablas separadas: una para Mercadona y otra para DIA. Cada tabla debe incluir comparaciones detalladas de los productos en cuanto a precios, calidad y disponibilidad. Si los datos son insuficientes para una comparación exhaustiva, identifica los productos que son más económicos en cada supermercado y señala cualquier limitación en la información disponible. Asegúrate de que tu respuesta sea clara y bien organizada para facilitar la comprensión.
     {context}"""
@@ -122,19 +101,5 @@ def modelo_final(pregunta):
         {"input": pregunta},
         config={"configurable": {"session_id": "aid125"}}
     )["answer"]
-    
-    
+
     return invoke_answer
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
