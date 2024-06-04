@@ -1,6 +1,6 @@
 import streamlit as st
 from dotenv import load_dotenv
-from tu_script_chatbot import modelo_final  # Asegúrate de que tu función está en un script accesible
+from main_chatbot import modelo_final  # Asegúrate de que tu función está en un script accesible
 
 # Cargar variables de entorno
 load_dotenv()
